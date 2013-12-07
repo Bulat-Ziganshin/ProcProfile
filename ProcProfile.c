@@ -1,4 +1,7 @@
-/* Written in 2013 by David Catt; placed into public domain */
+/*  ProcProfile 1.0 - A Command Line Process Profiling Tool For Windows
+    Written in 2013 by David Catt
+    Modified by Bulat Ziganshin
+    Placed into public domain */
 
 /* #define BYTECNT */
 #define STDPTIME
@@ -19,6 +22,7 @@
 const char* units[] = {"bytes", "KB", "MB"};
 const ULONGLONG shifts[] = {0, 10, 20};
 const DWORD wdiffs[] = {6, 3, 0};
+
 PROCESS_INFORMATION pi;
 BOOL WINAPI breakHdl(DWORD dwCtrlType) {
 #ifdef CCTERMINATE
@@ -27,6 +31,7 @@ BOOL WINAPI breakHdl(DWORD dwCtrlType) {
 #else
 	TerminateProcess(pi.hProcess, 1);
 #endif
+        return TRUE;
 }
 BOOL matchArg(LPTSTR cl, LPTSTR arg) {
 	while(!((*cl == (TCHAR)'\0') || (*arg == (TCHAR)'\0'))) {
@@ -52,6 +57,7 @@ void nextArg(LPTSTR* cl) {
 	}
 	while((**cl == (TCHAR) ' ') && (**cl != (TCHAR) '\0')) *cl += sizeof(TCHAR);
 }
+
 int main() {
 	/* Declare variables */
 	LPTSTR cl,cm;
@@ -67,7 +73,6 @@ int main() {
 	DWORD u=1;
 	/* Get command line and strip to only arguments */
 	cm = cl = GetCommandLine();
-	if(!cl) { fprintf(stderr, "Failed to get command line, error code %d.\n", GetLastError()); return 1; }
 	nextArg(&cl);
 	/* Parse program arguments */
 	while(*cl != (TCHAR) '\0') {
@@ -131,11 +136,11 @@ int main() {
 		ctv = bt;
 		etv = ft;
 #else
-		ctv = ct.dwLowDateTime | (ct.dwHighDateTime << 32);
-		etv = et.dwLowDateTime | (et.dwHighDateTime << 32);
+		ctv = ct.dwLowDateTime | ((ULONGLONG)ct.dwHighDateTime << 32);
+		etv = et.dwLowDateTime | ((ULONGLONG)et.dwHighDateTime << 32);
 #endif
-		ktv = kt.dwLowDateTime | (kt.dwHighDateTime << 32);
-		utv = ut.dwLowDateTime | (ut.dwHighDateTime << 32);
+		ktv = kt.dwLowDateTime | ((ULONGLONG)kt.dwHighDateTime << 32);
+		utv = ut.dwLowDateTime | ((ULONGLONG)ut.dwHighDateTime << 32);
 		/* Convert times into miliseconds */
 #ifdef STDPTIME
 		ctv = (ctv * 1000) / CLOCKS_PER_SEC;
@@ -171,7 +176,7 @@ int main() {
 		fprintf(stderr, "\n");
 		fprintf(stderr, "IO Read          : %*lld %s (in %15lld reads )\n", 12+wdiffs[u], ic.ReadTransferCount>>shifts[u], units[u], ic.ReadOperationCount);
 		fprintf(stderr, "IO Write         : %*lld %s (in %15lld writes)\n", 12+wdiffs[u], ic.WriteTransferCount>>shifts[u], units[u], ic.WriteOperationCount);
-		fprintf(stderr, "IO Other         : %*lld %s (in %15lld others)\n", 12+wdiffs[u], ic.OtherTransferCount>>shifts[u], units[u], ic.OtherOperationCount);		
+		fprintf(stderr, "IO Other         : %*lld %s (in %15lld others)\n", 12+wdiffs[u], ic.OtherTransferCount>>shifts[u], units[u], ic.OtherOperationCount);
 		fprintf(stderr, "\n");
 		/* Close process and thread handles */
 		CloseHandle(pi.hThread);
