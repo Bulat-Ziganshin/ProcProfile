@@ -68,7 +68,7 @@ int main() {
 	ULONGLONG ctv,etv,ktv,utv;
 	DWORD tec=0,pec=0;
 	DWORD exc;
-	DWORD u=1,p=0;
+	DWORD u=1,p=0,al=-1;
 	/* Get command line and strip to only arguments */
 	cm = cl = GetCommandLine();
 	nextArg(&cl);
@@ -86,6 +86,8 @@ int main() {
 			p = 1;
 		} else if(matchArg(cl, "-x")) {
 			p = 2;
+		} else if(matchArg(cl, "-u")) {
+			al = 0;
 		} else if(matchArg(cl, "--")) {
 			nextArg(&cl);
 			break;
@@ -105,6 +107,7 @@ int main() {
 		fprintf(stdout, "   -w   - Wait for exit with infinite wait (default)\n");
 		fprintf(stdout, "   -p   - Wait for exit with process polling\n");
 		fprintf(stdout, "   -x   - Wait for exit with exit code polling\n");
+		fprintf(stdout, "   -u   - Output status in left aligned format\n");
 		fprintf(stdout, "   --   - Stop parsing arguments\n");
 		return 1;
 	}
@@ -177,20 +180,20 @@ int main() {
 		fprintf(stderr, "Start Date: \n");
 		fprintf(stderr, "End Date  : \n"); */
 		fprintf(stderr, "\n");
-		fprintf(stderr, "User Time        : %*lld.%03llds\n", 8+wdiffs[u], utv/1000, utv%1000);
-		fprintf(stderr, "Kernel Time      : %*lld.%03llds\n", 8+wdiffs[u], ktv/1000, ktv%1000);
-		fprintf(stderr, "Process Time     : %*lld.%03llds\n", 8+wdiffs[u], (utv+ktv)/1000, (utv+ktv)%1000);
-		fprintf(stderr, "Clock Time       : %*lld.%03llds\n", 8+wdiffs[u], (etv-ctv)/1000, (etv-ctv)%1000);
+		fprintf(stderr, "User Time        : %*lld.%03llds\n", (8+wdiffs[u])&al, utv/1000, utv%1000);
+		fprintf(stderr, "Kernel Time      : %*lld.%03llds\n", (8+wdiffs[u])&al, ktv/1000, ktv%1000);
+		fprintf(stderr, "Process Time     : %*lld.%03llds\n", (8+wdiffs[u])&al, (utv+ktv)/1000, (utv+ktv)%1000);
+		fprintf(stderr, "Clock Time       : %*lld.%03llds\n", (8+wdiffs[u])&al, (etv-ctv)/1000, (etv-ctv)%1000);
 		fprintf(stderr, "\n");
-		fprintf(stderr, "Working Set      : %*lld %s\n", 12+wdiffs[u], (ULONGLONG)mc.PeakWorkingSetSize>>shifts[u], units[u]);
-		fprintf(stderr, "Paged Pool       : %*lld %s\n", 12+wdiffs[u], (ULONGLONG)mc.QuotaPeakPagedPoolUsage>>shifts[u], units[u]);
-		fprintf(stderr, "Nonpaged Pool    : %*lld %s\n", 12+wdiffs[u], (ULONGLONG)mc.QuotaPeakNonPagedPoolUsage>>shifts[u], units[u]);
-		fprintf(stderr, "Pagefile         : %*lld %s\n", 12+wdiffs[u], (ULONGLONG)mc.PeakPagefileUsage>>shifts[u], units[u]);
+		fprintf(stderr, "Working Set      : %*lld %s\n", (12+wdiffs[u])&al, (ULONGLONG)mc.PeakWorkingSetSize>>shifts[u], units[u]);
+		fprintf(stderr, "Paged Pool       : %*lld %s\n", (12+wdiffs[u])&al, (ULONGLONG)mc.QuotaPeakPagedPoolUsage>>shifts[u], units[u]);
+		fprintf(stderr, "Nonpaged Pool    : %*lld %s\n", (12+wdiffs[u])&al, (ULONGLONG)mc.QuotaPeakNonPagedPoolUsage>>shifts[u], units[u]);
+		fprintf(stderr, "Pagefile         : %*lld %s\n", (12+wdiffs[u])&al, (ULONGLONG)mc.PeakPagefileUsage>>shifts[u], units[u]);
 		fprintf(stderr, "Page Fault Count : %d\n", mc.PageFaultCount);
 		fprintf(stderr, "\n");
-		fprintf(stderr, "IO Read          : %*lld %s (in %15lld reads )\n", 12+wdiffs[u], ic.ReadTransferCount>>shifts[u], units[u], ic.ReadOperationCount);
-		fprintf(stderr, "IO Write         : %*lld %s (in %15lld writes)\n", 12+wdiffs[u], ic.WriteTransferCount>>shifts[u], units[u], ic.WriteOperationCount);
-		fprintf(stderr, "IO Other         : %*lld %s (in %15lld others)\n", 12+wdiffs[u], ic.OtherTransferCount>>shifts[u], units[u], ic.OtherOperationCount);
+		fprintf(stderr, "IO Read          : %*lld %s (in %*lld reads )\n", (12+wdiffs[u])&al, ic.ReadTransferCount>>shifts[u], units[u], 15&al, ic.ReadOperationCount);
+		fprintf(stderr, "IO Write         : %*lld %s (in %*lld writes)\n", (12+wdiffs[u])&al, ic.WriteTransferCount>>shifts[u], units[u], 15&al, ic.WriteOperationCount);
+		fprintf(stderr, "IO Other         : %*lld %s (in %*lld others)\n", (12+wdiffs[u])&al, ic.OtherTransferCount>>shifts[u], units[u], 15&al, ic.OtherOperationCount);
 		fprintf(stderr, "\n");
 		/* Close process and thread handles */
 		CloseHandle(pi.hThread);
