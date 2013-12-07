@@ -1,3 +1,5 @@
+/* Written by David Catt in 2013 */
+
 /* #define BYTECNT */
 #define STDPTIME
 /* #define CCTERMINATE */
@@ -14,6 +16,9 @@
 #include <time.h>
 #endif
 
+const char* units[] = {"bytes", "KB", "MB"};
+const ULONGLONG shifts[] = {0, 10, 20};
+const DWORD wdiffs[] = {6, 3, 0};
 PROCESS_INFORMATION pi;
 BOOL WINAPI breakHdl(DWORD dwCtrlType) {
 #ifdef CCTERMINATE
@@ -22,6 +27,30 @@ BOOL WINAPI breakHdl(DWORD dwCtrlType) {
 #else
 	TerminateProcess(pi.hProcess, 1);
 #endif
+}
+BOOL matchArg(LPTSTR cl, LPTSTR arg) {
+	while(!((*cl == (TCHAR)'\0') || (*arg == (TCHAR)'\0'))) {
+		if(*cl != *arg) return FALSE;
+		cl += sizeof(TCHAR);
+		arg += sizeof(TCHAR);
+	}
+	return (*cl == (TCHAR)'\0') || (*cl == (TCHAR)' ');
+}
+BOOL matchArgPart(LPTSTR cl, LPTSTR arg) {
+	while(!((*cl == (TCHAR)'\0') || (*arg == (TCHAR)'\0'))) {
+		if(*cl != *arg) return FALSE;
+		cl += sizeof(TCHAR);
+		arg += sizeof(TCHAR);
+	}
+	return TRUE;
+}
+void nextArg(LPTSTR* cl) {
+	BOOL inq=FALSE;
+	while((inq || !(**cl == (TCHAR)' ')) && !(**cl == (TCHAR)'\0')) {
+		if(**cl == '"') inq = !inq;
+		*cl += sizeof(TCHAR);
+	}
+	while((**cl == (TCHAR) ' ') && (**cl != (TCHAR) '\0')) *cl += sizeof(TCHAR);
 }
 int main() {
 	/* Declare variables */
@@ -35,18 +64,32 @@ int main() {
 	FILETIME ct,et,kt,ut;
 	ULONGLONG ctv,etv,ktv,utv;
 	DWORD tec=0,pec=0;
-	BOOL inq=0;
+	DWORD u=1;
 	/* Get command line and strip to only arguments */
 	cm = cl = GetCommandLine();
 	if(!cl) { fprintf(stderr, "Failed to get command line, error code %d.\n", GetLastError()); return 1; }
-	while(inq || !((*cl == (TCHAR)' ') || (*cl == (TCHAR)'\0'))) {
-		if(*cl == '"') inq = !inq;
-		cl += sizeof(TCHAR);
+	nextArg(&cl);
+	/* Parse program arguments */
+	while(*cl != (TCHAR) '\0') {
+		if(matchArg(cl, "-b")) {
+			u = 0;
+		} else if(matchArg(cl, "-k")) {
+			u = 1;
+		} else if(matchArg(cl, "-m")) {
+			u = 2;
+		} else {
+			break;
+		}
+		nextArg(&cl);
 	}
-	while((*cl == (TCHAR) ' ') && (*cl != (TCHAR) '\0')) cl += sizeof(TCHAR);
 	/* Print help on empty command line */
 	if(*cl == (TCHAR) '\0') {
-		fprintf(stdout, "usage: ProcProfile [commandline]\n");
+		fprintf(stdout, "ProcProfile    V1.1\n\n");
+		fprintf(stdout, "usage: ProcProfile [arguments] [commandline]\n\n");
+		fprintf(stdout, "arguments:\n");
+		fprintf(stdout, "   -b   - Output results in bytes\n");
+		fprintf(stdout, "   -k   - Output results in kilobytes\n");
+		fprintf(stdout, "   -m   - Output results in megabytes\n");
 		return 1;
 	}
 	/* Setup structures */
@@ -115,37 +158,20 @@ int main() {
 		fprintf(stderr, "Start Date: \n");
 		fprintf(stderr, "End Date  : \n"); */
 		fprintf(stderr, "\n");
-#ifdef BYTECNT
-		fprintf(stderr, "User Time        : %14lld.%03llds\n", utv/1000, utv%1000);
-		fprintf(stderr, "Kernel Time      : %14lld.%03llds\n", ktv/1000, ktv%1000);
-		fprintf(stderr, "Process Time     : %14lld.%03llds\n", (utv+ktv)/1000, (utv+ktv)%1000);
-		fprintf(stderr, "Clock Time       : %14lld.%03llds\n", (etv-ctv)/1000, (etv-ctv)%1000);
+		fprintf(stderr, "User Time        : %*lld.%03llds\n", 8+wdiffs[u], utv/1000, utv%1000);
+		fprintf(stderr, "Kernel Time      : %*lld.%03llds\n", 8+wdiffs[u], ktv/1000, ktv%1000);
+		fprintf(stderr, "Process Time     : %*lld.%03llds\n", 8+wdiffs[u], (utv+ktv)/1000, (utv+ktv)%1000);
+		fprintf(stderr, "Clock Time       : %*lld.%03llds\n", 8+wdiffs[u], (etv-ctv)/1000, (etv-ctv)%1000);
 		fprintf(stderr, "\n");
-		fprintf(stderr, "Working Set      : %18lld bytes\n", (ULONGLONG)mc.PeakWorkingSetSize);
-		fprintf(stderr, "Paged Pool       : %18lld bytes\n", (ULONGLONG)mc.QuotaPeakPagedPoolUsage);
-		fprintf(stderr, "Nonpaged Pool    : %18lld bytes\n", (ULONGLONG)mc.QuotaPeakNonPagedPoolUsage);
-		fprintf(stderr, "Pagefile         : %18lld bytes\n", (ULONGLONG)mc.PeakPagefileUsage);
+		fprintf(stderr, "Working Set      : %*lld %s\n", 12+wdiffs[u], (ULONGLONG)mc.PeakWorkingSetSize>>shifts[u], units[u]);
+		fprintf(stderr, "Paged Pool       : %*lld %s\n", 12+wdiffs[u], (ULONGLONG)mc.QuotaPeakPagedPoolUsage>>shifts[u], units[u]);
+		fprintf(stderr, "Nonpaged Pool    : %*lld %s\n", 12+wdiffs[u], (ULONGLONG)mc.QuotaPeakNonPagedPoolUsage>>shifts[u], units[u]);
+		fprintf(stderr, "Pagefile         : %*lld %s\n", 12+wdiffs[u], (ULONGLONG)mc.PeakPagefileUsage>>shifts[u], units[u]);
 		fprintf(stderr, "Page Fault Count : %d\n", mc.PageFaultCount);
 		fprintf(stderr, "\n");
-		fprintf(stderr, "IO Read          : %18lld bytes (in %15lld reads )\n", ic.ReadTransferCount, ic.ReadOperationCount);
-		fprintf(stderr, "IO Write         : %18lld bytes (in %15lld writes)\n", ic.WriteTransferCount, ic.WriteOperationCount);
-		fprintf(stderr, "IO Other         : %18lld bytes (in %15lld others)\n", ic.OtherTransferCount, ic.OtherOperationCount);		
-#else
-		fprintf(stderr, "User Time        : %11lld.%03llds\n", utv/1000, utv%1000);
-		fprintf(stderr, "Kernel Time      : %11lld.%03llds\n", ktv/1000, ktv%1000);
-		fprintf(stderr, "Process Time     : %11lld.%03llds\n", (utv+ktv)/1000, (utv+ktv)%1000);
-		fprintf(stderr, "Clock Time       : %11lld.%03llds\n", (etv-ctv)/1000, (etv-ctv)%1000);
-		fprintf(stderr, "\n");
-		fprintf(stderr, "Working Set      : %15lld KB\n", (ULONGLONG)mc.PeakWorkingSetSize>>10);
-		fprintf(stderr, "Paged Pool       : %15lld KB\n", (ULONGLONG)mc.QuotaPeakPagedPoolUsage>>10);
-		fprintf(stderr, "Nonpaged Pool    : %15lld KB\n", (ULONGLONG)mc.QuotaPeakNonPagedPoolUsage>>10);
-		fprintf(stderr, "Pagefile         : %15lld KB\n", (ULONGLONG)mc.PeakPagefileUsage>>10);
-		fprintf(stderr, "Page Fault Count : %d\n", mc.PageFaultCount);
-		fprintf(stderr, "\n");
-		fprintf(stderr, "IO Read          : %15lld KB (in %15lld reads )\n", ic.ReadTransferCount>>10, ic.ReadOperationCount);
-		fprintf(stderr, "IO Write         : %15lld KB (in %15lld writes)\n", ic.WriteTransferCount>>10, ic.WriteOperationCount);
-		fprintf(stderr, "IO Other         : %15lld KB (in %15lld others)\n", ic.OtherTransferCount>>10, ic.OtherOperationCount);		
-#endif
+		fprintf(stderr, "IO Read          : %*lld %s (in %15lld reads )\n", 12+wdiffs[u], ic.ReadTransferCount>>shifts[u], units[u], ic.ReadOperationCount);
+		fprintf(stderr, "IO Write         : %*lld %s (in %15lld writes)\n", 12+wdiffs[u], ic.WriteTransferCount>>shifts[u], units[u], ic.WriteOperationCount);
+		fprintf(stderr, "IO Other         : %*lld %s (in %15lld others)\n", 12+wdiffs[u], ic.OtherTransferCount>>shifts[u], units[u], ic.OtherOperationCount);		
 		fprintf(stderr, "\n");
 		/* Close process and thread handles */
 		CloseHandle(pi.hThread);
