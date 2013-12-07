@@ -5,8 +5,6 @@
 
 #define STDPTIME
 /* #define CCTERMINATE */
-/* #define POLLING */
-/* #define WAITPOLLING */
 #define POLLINTERVAL 10
 #define CHECKINTERVAL 10
 #include <windows.h>
@@ -69,7 +67,8 @@ int main() {
 	FILETIME ct,et,kt,ut;
 	ULONGLONG ctv,etv,ktv,utv;
 	DWORD tec=0,pec=0;
-	DWORD u=1;
+	DWORD exc;
+	DWORD u=1,p=0;
 	/* Get command line and strip to only arguments */
 	cm = cl = GetCommandLine();
 	nextArg(&cl);
@@ -81,6 +80,12 @@ int main() {
 			u = 1;
 		} else if(matchArg(cl, "-m")) {
 			u = 2;
+		} else if(matchArg(cl, "-w")) {
+			p = 0;
+		} else if(matchArg(cl, "-p")) {
+			p = 1;
+		} else if(matchArg(cl, "-x")) {
+			p = 2;
 		} else if(matchArg(cl, "--")) {
 			nextArg(&cl);
 			break;
@@ -97,6 +102,9 @@ int main() {
 		fprintf(stdout, "   -b   - Output results in bytes\n");
 		fprintf(stdout, "   -k   - Output results in kilobytes (default)\n");
 		fprintf(stdout, "   -m   - Output results in megabytes\n");
+		fprintf(stdout, "   -w   - Wait for exit with infinite wait (default)\n");
+		fprintf(stdout, "   -p   - Wait for exit with process polling\n");
+		fprintf(stdout, "   -x   - Wait for exit with exit code polling\n");
 		fprintf(stdout, "   --   - Stop parsing arguments\n");
 		return 1;
 	}
@@ -113,17 +121,20 @@ int main() {
 		/* Add special control handler */
 		SetConsoleCtrlHandler(breakHdl, 1);
 		/* Wait for process exit */
-#ifdef POLLING
-#ifdef WAITPOLLING
-		while(WaitForSingleObject(pi.hProcess, CHECKINTERVAL) == WAIT_TIMEOUT) {
-#else
-		while(GetExitCodeProcess(pi.hProcess) == STILL_ACTIVE) {
-#endif
-			Sleep(POLLINTERVAL);
-		}
-#else
-		WaitForSingleObject(pi.hProcess, INFINITE);
-#endif
+		switch(p) {
+			case 0:
+				WaitForSingleObject(pi.hProcess, INFINITE);
+				break;
+			case 1:
+				while(WaitForSingleObject(pi.hProcess, CHECKINTERVAL) == WAIT_TIMEOUT) Sleep(POLLINTERVAL);
+				break;
+			case 2:
+				while(GetExitCodeProcess(pi.hProcess, &exc)) {
+					if(exc != STILL_ACTIVE) break;
+					Sleep(POLLINTERVAL);
+				}
+				break;
+		}		
 		/* Retrieve end time */
 #ifdef STDPTIME
 		ft = clock();
