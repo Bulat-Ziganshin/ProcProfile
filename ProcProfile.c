@@ -3,7 +3,6 @@
     Modified by Bulat Ziganshin
     Placed into public domain */
 
-/* #define BYTECNT */
 #define STDPTIME
 /* #define CCTERMINATE */
 /* #define POLLING */
@@ -82,6 +81,9 @@ int main() {
 			u = 1;
 		} else if(matchArg(cl, "-m")) {
 			u = 2;
+		} else if(matchArg(cl, "--")) {
+			nextArg(&cl);
+			break;
 		} else {
 			break;
 		}
@@ -95,6 +97,7 @@ int main() {
 		fprintf(stdout, "   -b   - Output results in bytes\n");
 		fprintf(stdout, "   -k   - Output results in kilobytes\n");
 		fprintf(stdout, "   -m   - Output results in megabytes\n");
+		fprintf(stdout, "   --   - Stop parsing arguments\n");
 		return 1;
 	}
 	/* Setup structures */
