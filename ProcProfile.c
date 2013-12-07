@@ -1,4 +1,4 @@
-/*  ProcProfile 1.0 - A Command Line Process Profiling Tool For Windows
+/*  ProcProfile 1.1 - A Command Line Process Profiling Tool For Windows
     Written in 2013 by David Catt
     Modified by Bulat Ziganshin
     Placed into public domain */
@@ -95,7 +95,7 @@ int main() {
 		fprintf(stdout, "usage: ProcProfile [arguments] [commandline]\n\n");
 		fprintf(stdout, "arguments:\n");
 		fprintf(stdout, "   -b   - Output results in bytes\n");
-		fprintf(stdout, "   -k   - Output results in kilobytes\n");
+		fprintf(stdout, "   -k   - Output results in kilobytes (default)\n");
 		fprintf(stdout, "   -m   - Output results in megabytes\n");
 		fprintf(stdout, "   --   - Stop parsing arguments\n");
 		return 1;
