@@ -1,4 +1,4 @@
-/* Written by David Catt in 2013 */
+/* Written in 2013 by David Catt; placed into public domain */
 
 /* #define BYTECNT */
 #define STDPTIME
