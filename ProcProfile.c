@@ -133,6 +133,10 @@ int main(void) {
 					case (TCHAR)'d': ce |= 8192; break;
 					case (TCHAR)'e': ce |= 16384; break;
 					case (TCHAR)'f': ce |= 32768; break;
+					case (TCHAR)'i': ce |= 15; break;
+					case (TCHAR)'t': ce |= 240; break;
+					case (TCHAR)'m': ce |= 7936; break;
+					case (TCHAR)'o': ce |= 57344; break;
 				}
 				tc += sizeof(TCHAR);
 			}
@@ -153,7 +157,12 @@ int main(void) {
 			fprintf(stdout, "  c - Page Fault Count\n");
 			fprintf(stdout, "  d - IO Read\n");
 			fprintf(stdout, "  e - IO Write\n");
-			fprintf(stdout, "  f - IO Other\n");
+			fprintf(stdout, "  f - IO Other\n\n");
+			fprintf(stdout, "Statistic Groups:\n");
+			fprintf(stdout, "  i - Process/Thread Info\n");
+			fprintf(stdout, "  t - Process Times\n");
+			fprintf(stdout, "  m - Memory Info\n");
+			fprintf(stdout, "  o - IO Info\n");
 			return 1;
 		} else if(matchArg(cl, "--")) {
 			nextArg(&cl);
