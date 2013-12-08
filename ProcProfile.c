@@ -68,7 +68,7 @@ void printHelp(void) {
 	fprintf(stdout, "   -x   - Wait for exit with exit code polling\n");
 	fprintf(stdout, "   -u   - Output status in left aligned format\n");
 	fprintf(stdout, "   -r...- Select stat output types\n");
-	fprintf(stdout, "   -s   - Print out output types and exit\n");
+	fprintf(stdout, "   -s   - Print output types and exit\n");
 	fprintf(stdout, "   --   - Stop parsing arguments\n");
 }
 int main(void) {
@@ -257,7 +257,7 @@ int main(void) {
 		if(ce&2048)fprintf(stderr, "Pagefile         : %*lld %s\n", (12+wdiffs[u])&al, (ULONGLONG)mc.PeakPagefileUsage>>shifts[u], units[u]);
 		if(ce&4096)fprintf(stderr, "Page Fault Count : %d\n", mc.PageFaultCount);
 		if(ce&7936)fprintf(stderr, "\n");
-		if(ce&8192)fprintf(stderr, "IO Read          : %*lld %s (in %*lld reads )\n", (12+wdiffs[u])&al, ic.ReadTransferCount>>shifts[u], units[u], 15&al, ic.ReadOperationCount);
+		if(ce&8192)fprintf(stderr, "IO Read          : %*lld %s (in %*lld reads%s)\n", (12+wdiffs[u])&al, ic.ReadTransferCount>>shifts[u], units[u], 15&al, ic.ReadOperationCount, al?" ":"");
 		if(ce&16384)fprintf(stderr, "IO Write         : %*lld %s (in %*lld writes)\n", (12+wdiffs[u])&al, ic.WriteTransferCount>>shifts[u], units[u], 15&al, ic.WriteOperationCount);
 		if(ce&32768)fprintf(stderr, "IO Other         : %*lld %s (in %*lld others)\n", (12+wdiffs[u])&al, ic.OtherTransferCount>>shifts[u], units[u], 15&al, ic.OtherOperationCount);
 		if(ce&57344)fprintf(stderr, "\n");
