@@ -235,7 +235,7 @@ int main(void) {
 					case (TCHAR)'"': inq = !inq; break;
 					case (TCHAR)'n': t |= 1; break;
 					case (TCHAR)'b': t |= 2; break;
-					/*case (TCHAR)'x': t |= 4; break;*/
+					case (TCHAR)'x': t |= 4; break;
 				}
 				tc += sizeof(TCHAR);
 			}
@@ -243,7 +243,7 @@ int main(void) {
 			fprintf(stdout, "Output Template Types:\n");
 			fprintf(stdout, "  n - Use normal output template (default)\n");
 			fprintf(stdout, "  b - Use compressor benchmarking output template\n");
-			/*fprintf(stdout, "  x - Use xml output template\n");*/
+			fprintf(stdout, "  x - Use xml output template\n");
 			return 1;
 		} else if(matchArg(cl, "--")) {
 			nextArg(&cl);
@@ -361,6 +361,46 @@ int main(void) {
 			fprintf(stderr, " (%lld.%03lld sec), real ", (utv+ktv)/1000, (utv+ktv)%1000);
 			printSpeed((etv-ctv)?(ic.ReadTransferCount*1000)/(etv-ctv):0, du);
 			fprintf(stderr, " (%lld.%03lld sec) = %d%%\n", (etv-ctv)/1000, (etv-ctv)%1000, (etv-ctv)?((utv+ktv)*100)/(etv-ctv):0);
+		}
+		if(t&4) {
+			fprintf(stderr, "<profile>\n");
+			if(ce&15)fprintf(stderr, "\t<general>\n");
+			if(ce&1)fprintf(stderr, "\t\t<processID>%d</processID>\n", pi.dwProcessId);
+			if(ce&2)fprintf(stderr, "\t\t<threadID>%d</threadID>\n", pi.dwThreadId);
+			if(ce&4)fprintf(stderr, "\t\t<processExitCode>%d</processExitCode>\n", pec);
+			if(ce&8)fprintf(stderr, "\t\t<threadExitCode>%d</threadExitCode>\n", tec);
+			/* fprintf(stderr, "\n");
+			fprintf(stderr, "Start Date: \n");
+			fprintf(stderr, "End Date  : \n"); */
+			if(ce&15)fprintf(stderr, "\t</general>\n");
+			if(ce&240)fprintf(stderr, "\t<timings>\n");
+			if(ce&16)fprintf(stderr, "\t\t<user>%lld.%03lld</user>\n", utv/1000, utv%1000);
+			if(ce&32)fprintf(stderr, "\t\t<kernel>%lld.%03lld</kernel>\n", ktv/1000, ktv%1000);
+			if(ce&64)fprintf(stderr, "\t\t<process>%lld.%03lld</process>\n", (utv+ktv)/1000, (utv+ktv)%1000);
+			if(ce&128)fprintf(stderr, "\t\t<clock>%lld.%03lld</clock>\n", (etv-ctv)/1000, (etv-ctv)%1000);
+			if(ce&240)fprintf(stderr, "\t</timings>\n");
+			if(ce&7936)fprintf(stderr, "\t<memory>\n");
+			if(ce&256)fprintf(stderr, "\t\t<workingSet>%lld</workingSet>\n", (ULONGLONG)mc.PeakWorkingSetSize);
+			if(ce&512)fprintf(stderr, "\t\t<pagedPool>%lld</pagedPool>\n", (ULONGLONG)mc.QuotaPeakPagedPoolUsage);
+			if(ce&1024)fprintf(stderr, "\t\t<nonpagedPool>%lld</nonpagedPool>\n", (ULONGLONG)mc.QuotaPeakNonPagedPoolUsage);
+			if(ce&2048)fprintf(stderr, "\t\t<pagefile>%lld</pagefile>\n", (ULONGLONG)mc.PeakPagefileUsage);
+			if(ce&4096)fprintf(stderr, "\t\t<pageFaults>%d</pageFaults>\n", mc.PageFaultCount);
+			if(ce&7936)fprintf(stderr, "\t</memory>\n");
+			if(ce&57344)fprintf(stderr, "\t<io>\n");
+			if(ce&8192) {
+				fprintf(stderr, "\t\t<readData>%lld</readData>\n", ic.ReadTransferCount);
+				fprintf(stderr, "\t\t<readCount>%lld</readCount>\n", ic.ReadOperationCount);
+			}
+			if(ce&16384) {
+				fprintf(stderr, "\t\t<writeData>%lld</writeData>\n", ic.WriteTransferCount);
+				fprintf(stderr, "\t\t<writeCount>%lld</writeCount>\n", ic.WriteOperationCount);
+			}
+			if(ce&32768) {
+				fprintf(stderr, "\t\t<otherData>%lld</otherData>\n", ic.OtherTransferCount);
+				fprintf(stderr, "\t\t<otherCount>%lld</otherCount>\n", ic.OtherOperationCount);
+			}
+			if(ce&57344)fprintf(stderr, "\t</io>\n");
+			fprintf(stderr, "</profile>\n");
 		}
 		/* Close process and thread handles */
 		CloseHandle(pi.hThread);
