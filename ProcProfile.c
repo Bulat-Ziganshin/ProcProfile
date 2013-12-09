@@ -103,10 +103,10 @@ void printHelp(void) {
 	fprintf(stdout, "   -pa  - Start process with above normal priority\n");
 	fprintf(stdout, "   -ph  - Start process with high priority\n");
 	fprintf(stdout, "   -pr  - Start process with realtime priority\n");
-	fprintf(stdout, "   -tb  - Use compressor benchmarking output template\n");
-	/*fprintf(stdout, "   -tx  - Use xml output template\n");*/
 	fprintf(stdout, "   -a...- Set process affinity to the given hex string\n");
-	fprintf(stdout, "   --   - Stop parsing arguments\n");
+	fprintf(stdout, "   -t...- Select output templates\n");
+	fprintf(stdout, "   -o   - Print available templates and exit\n");
+	fprintf(stdout, "   --   - Stop parsing arguments");
 }
 int main(void) {
 	/* Declare variables */
@@ -122,7 +122,7 @@ int main(void) {
 	DWORD tec=0,pec=0;
 	DWORD exc;
 	DWORD cf=0;
-	DWORD u=1,p=0,al=-1,ce=-1,t=0,du=-1;
+	DWORD u=1,p=0,al=-1,ce=-1,t=1,du=-1;
 	DWORD_PTR pa=-1;
 	BOOL inq=FALSE;
 	/* Get command line and strip to only arguments */
@@ -218,8 +218,6 @@ int main(void) {
 			cf = HIGH_PRIORITY_CLASS;
 		} else if(matchArg(cl, "-pr")) {
 			cf = REALTIME_PRIORITY_CLASS;
-		} else if(matchArg(cl, "-tb")) {
-			t = 1;
 		} else if(matchArgPart(cl, "-a")) {
 			pa = 0;
 			tc = cl + (sizeof(TCHAR)<<1);
@@ -229,6 +227,24 @@ int main(void) {
 				if((*tc >= 'A') && (*tc <= 'F')) { pa <<= 4; pa += *tc - 'A' + 10; }
 				tc += sizeof(TCHAR);
 			}
+		} else if(matchArgPart(cl, "-t")) {
+			t = 0;
+			tc = cl + (sizeof(TCHAR)<<1);
+			while((inq || !(*tc == (TCHAR)' ')) && !(*tc == (TCHAR)'\0')) {
+				switch(*tc) {
+					case (TCHAR)'"': inq = !inq; break;
+					case (TCHAR)'n': t |= 1; break;
+					case (TCHAR)'b': t |= 2; break;
+					/*case (TCHAR)'x': t |= 4; break;*/
+				}
+				tc += sizeof(TCHAR);
+			}
+		} else if(matchArg(cl, "-o")) {
+			fprintf(stdout, "Output Template Types:\n");
+			fprintf(stdout, "  n - Use normal output template (default)\n");
+			fprintf(stdout, "  b - Use compressor benchmarking output template\n");
+			/*fprintf(stdout, "  x - Use xml output template\n");*/
+			return 1;
 		} else if(matchArg(cl, "--")) {
 			nextArg(&cl);
 			break;
@@ -305,7 +321,7 @@ int main(void) {
 		if(etv < ctv) etv = ctv;
 		/* Print process information */
 		fprintf(stderr, "\n");
-		if(t==0) {
+		if(t&1) {
 			if(ce&1)fprintf(stderr, "Process ID       : %d\n", pi.dwProcessId);
 			if(ce&2)fprintf(stderr, "Thread ID        : %d\n", pi.dwThreadId);
 			if(ce&4)fprintf(stderr, "Process Exit Code: %d\n", pec);
@@ -329,7 +345,8 @@ int main(void) {
 			if(ce&16384)fprintf(stderr, "IO Write         : %*lld %s (in %*lld writes)\n", (12+wdiffs[u])&al, ic.WriteTransferCount>>shifts[u], units[u], 15&al, ic.WriteOperationCount);
 			if(ce&32768)fprintf(stderr, "IO Other         : %*lld %s (in %*lld others)\n", (12+wdiffs[u])&al, ic.OtherTransferCount>>shifts[u], units[u], 15&al, ic.OtherOperationCount);
 			if(ce&57344)fprintf(stderr, "\n");
-		} else if(t==1) {
+		}
+		if(t&2) {
 			/*fprintf(stderr, "%lld -> %lld: %d.%02d%%. Cpu ", ic.ReadTransferCount, ic.WriteTransferCount, ic.ReadTransferCount?(ic.WriteTransferCount*100)/ic.ReadTransferCount:0, (ic.ReadTransferCount?(ic.WriteTransferCount*10000)/ic.ReadTransferCount:0)%100);*/
 			printSVal(ic.ReadTransferCount, 0);
 			fprintf(stderr, " -> ");
