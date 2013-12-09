@@ -59,9 +59,7 @@ void nextArg(LPTSTR* cl) {
 void printSpeed(ULONGLONG bps, DWORD du) {
 	if((du >= 0) && (du <= 2)) {
 		fprintf(stderr, "%lld %s/s", bps>>shifts[du], unitslow[du]);
-		return;
-	}
-	if(bps > (3<<20)) {
+	} else if(bps > (3<<20)) {
 		fprintf(stderr, "%lld mb/s", bps>>20);
 	} else if(bps > (3<<10)) {
 		fprintf(stderr, "%lld kb/s", bps>>10);
