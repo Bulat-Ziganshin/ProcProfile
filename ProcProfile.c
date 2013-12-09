@@ -83,6 +83,22 @@ void printSVal(ULONGLONG val, DWORD pad) {
 	fprintf(stderr, "%s", tp);
 	free(vb);
 }
+void printSValWidth(ULONGLONG val, int width) {
+	char *tp,*vb = malloc((width+28) * sizeof(char));
+	DWORD cc = -1;
+	if(!vb) return;
+	tp = vb + width + 27;
+	*tp = '\0';
+	if(!val) *(--tp) = '0';
+	while(val) {
+		if(++cc >= 3) { *(--tp) = ','; --width; cc = 0; }
+		*(--tp) = '0' + (val % 10); --width;
+		val /= 10;
+	}
+	while(width > 0) { *(--tp) = ' '; --width; }
+	fprintf(stderr, "%s", tp);
+	free(vb);
+}
 
 void printHelp(void) {
 	fprintf(stdout, "ProcProfile    V1.3\n\n");
@@ -97,16 +113,12 @@ void printHelp(void) {
 	fprintf(stdout, "   -u   - Output status in left aligned format\n");
 	fprintf(stdout, "   -r...- Select stat output types\n");
 	fprintf(stdout, "   -s   - Print output types and exit\n");
-	fprintf(stdout, "   -pi  - Start process with idle priority\n");
-	fprintf(stdout, "   -pb  - Start process with below normal priority\n");
-	fprintf(stdout, "   -pn  - Start process with normal priority\n");
-	fprintf(stdout, "   -pa  - Start process with above normal priority\n");
-	fprintf(stdout, "   -ph  - Start process with high priority\n");
-	fprintf(stdout, "   -pr  - Start process with realtime priority\n");
+	fprintf(stdout, "   -p_  - Start process with a given priority\n");
+	fprintf(stdout, "   -i   - Print possible priorities and exit\n");
 	fprintf(stdout, "   -a...- Set process affinity to the given hex string\n");
 	fprintf(stdout, "   -t...- Select output templates\n");
 	fprintf(stdout, "   -o   - Print available templates and exit\n");
-	fprintf(stdout, "   --   - Stop parsing arguments");
+	fprintf(stdout, "   --   - Stop parsing arguments\n");
 }
 int main(void) {
 	/* Declare variables */
@@ -218,6 +230,15 @@ int main(void) {
 			cf = HIGH_PRIORITY_CLASS;
 		} else if(matchArg(cl, "-pr")) {
 			cf = REALTIME_PRIORITY_CLASS;
+		} else if(matchArg(cl, "-i")) {
+			fprintf(stdout, "Priority Types:\n");
+			fprintf(stdout, "  i  - Idle priority\n");
+			fprintf(stdout, "  b  - Below normal priority\n");
+			fprintf(stdout, "  n  - Normal priority\n");
+			fprintf(stdout, "  a  - Above normal priority\n");
+			fprintf(stdout, "  h  - High priority\n");
+			fprintf(stdout, "  r  - Realtime priority\n");
+			return 1;
 		} else if(matchArgPart(cl, "-a")) {
 			pa = 0;
 			tc = cl + (sizeof(TCHAR)<<1);
