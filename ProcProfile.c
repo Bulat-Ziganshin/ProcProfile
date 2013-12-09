@@ -82,7 +82,7 @@ void printSVal(ULONGLONG val, DWORD pad) {
 }
 
 void printHelp(void) {
-	fprintf(stdout, "ProcProfile    V1.2\n\n");
+	fprintf(stdout, "ProcProfile    V1.3\n\n");
 	fprintf(stdout, "usage: ProcProfile [arguments] [commandline]\n\n");
 	fprintf(stdout, "arguments:\n");
 	fprintf(stdout, "   -b   - Output results in bytes\n");
