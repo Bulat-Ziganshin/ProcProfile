@@ -68,7 +68,7 @@ void printSpeed(ULONGLONG bps, DWORD du) {
 	}
 }
 void printSVal(ULONGLONG val, DWORD pad) {
-	char *tp,*vb = malloc(pad+28, sizeof(char));
+	char *tp,*vb = malloc((pad+28) * sizeof(char));
 	DWORD cc = -1;
 	if(!vb) return;
 	tp = vb + pad + 27;
