@@ -18,6 +18,7 @@
 #endif
 
 const char* units[] = {"bytes", "KB", "MB"};
+const char* unitslow[] = {"bytes", "kb", "mb"};
 const ULONGLONG shifts[] = {0, 10, 20};
 const DWORD wdiffs[] = {6, 3, 0};
 
@@ -55,7 +56,11 @@ void nextArg(LPTSTR* cl) {
 	}
 	while((**cl == (TCHAR) ' ') && (**cl != (TCHAR) '\0')) *cl += sizeof(TCHAR);
 }
-void printSpeed(ULONGLONG bps) {
+void printSpeed(ULONGLONG bps, DWORD du) {
+	if((du >= 0) && (du <= 2)) {
+		fprintf(stderr, "%lld %s/s", bps>>shifts[du], unitslow[du]);
+		return;
+	}
 	if(bps > (3<<20)) {
 		fprintf(stderr, "%lld mb/s", bps>>20);
 	} else if(bps > (3<<10)) {
@@ -102,6 +107,7 @@ void printHelp(void) {
 	fprintf(stdout, "   -pr  - Start process with realtime priority\n");
 	fprintf(stdout, "   -tb  - Use compressor benchmarking output template\n");
 	/*fprintf(stdout, "   -tx  - Use xml output template\n");*/
+	fprintf(stdout, "   -a...- Set process affinity to the given hex string\n");
 	fprintf(stdout, "   --   - Stop parsing arguments\n");
 }
 int main(void) {
@@ -118,7 +124,8 @@ int main(void) {
 	DWORD tec=0,pec=0;
 	DWORD exc;
 	DWORD cf=0;
-	DWORD u=1,p=0,al=-1,ce=-1,t=0;
+	DWORD u=1,p=0,al=-1,ce=-1,t=0,du=-1;
+	DWORD_PTR pa=-1;
 	BOOL inq=FALSE;
 	/* Get command line and strip to only arguments */
 	cm = cl = GetCommandLine();
@@ -133,10 +140,13 @@ int main(void) {
 			return 1;
 		} else if(matchArg(cl, "-b")) {
 			u = 0;
+			du = 0;
 		} else if(matchArg(cl, "-k")) {
 			u = 1;
+			du = 1;
 		} else if(matchArg(cl, "-m")) {
 			u = 2;
+			du = 2;
 		} else if(matchArg(cl, "-w")) {
 			p = 0;
 		} else if(matchArg(cl, "-p")) {
@@ -212,6 +222,15 @@ int main(void) {
 			cf = REALTIME_PRIORITY_CLASS;
 		} else if(matchArg(cl, "-tb")) {
 			t = 1;
+		} else if(matchArgPart(cl, "-a")) {
+			pa = 0;
+			tc = cl + (sizeof(TCHAR)<<1);
+			while((inq || !(*tc == (TCHAR)' ')) && !(*tc == (TCHAR)'\0')) {
+				if((*tc >= '0') && (*tc <= '9')) { pa <<= 4; pa += *tc - '0'; }
+				if((*tc >= 'a') && (*tc <= 'f')) { pa <<= 4; pa += *tc - 'a' + 10; }
+				if((*tc >= 'A') && (*tc <= 'F')) { pa <<= 4; pa += *tc - 'A' + 10; }
+				tc += sizeof(TCHAR);
+			}
 		} else if(matchArg(cl, "--")) {
 			nextArg(&cl);
 			break;
@@ -235,6 +254,8 @@ int main(void) {
 #ifdef STDPTIME
 		bt = clock();
 #endif
+		/* Set process affinity if required */
+		if(pa != -1) SetProcessAffinityMask(pi.hProcess, pa);
 		/* Add special control handler */
 		SetConsoleCtrlHandler(breakHdl, 1);
 		/* Wait for process exit */
@@ -321,9 +342,9 @@ int main(void) {
 				ic.ReadTransferCount ^= ic.WriteTransferCount;
 			}
 			fprintf(stderr, ": %d.%02d%%. Cpu ", (DWORD)(ic.ReadTransferCount?(ic.WriteTransferCount*100)/ic.ReadTransferCount:0), (DWORD)((ic.ReadTransferCount?(ic.WriteTransferCount*10000)/ic.ReadTransferCount:0)%100));
-			printSpeed((utv+ktv)?(ic.ReadTransferCount*1000)/(utv+ktv):0);
+			printSpeed((utv+ktv)?(ic.ReadTransferCount*1000)/(utv+ktv):0, du);
 			fprintf(stderr, " (%lld.%03lld sec), real ", (utv+ktv)/1000, (utv+ktv)%1000);
-			printSpeed((etv-ctv)?(ic.ReadTransferCount*1000)/(etv-ctv):0);
+			printSpeed((etv-ctv)?(ic.ReadTransferCount*1000)/(etv-ctv):0, du);
 			fprintf(stderr, " (%lld.%03lld sec) = %d%%\n", (etv-ctv)/1000, (etv-ctv)%1000, (etv-ctv)?((utv+ktv)*100)/(etv-ctv):0);
 		}
 		/* Close process and thread handles */
