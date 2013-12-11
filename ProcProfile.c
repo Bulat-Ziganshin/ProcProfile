@@ -67,7 +67,7 @@ void printSpeed(ULONGLONG bps, DWORD du) {
 		fprintf(stderr, "%lld bytes/s", bps);
 	}
 }
-void printSVal(ULONGLONG val, DWORD pad) {
+void printSVal(ULONGLONG val, DWORD pad, BOOL comma) {
 	char *tp,*vb = malloc((pad+28) * sizeof(char));
 	DWORD cc = -1;
 	if(!vb) return;
@@ -75,7 +75,7 @@ void printSVal(ULONGLONG val, DWORD pad) {
 	*tp = '\0';
 	if(!val) *(--tp) = '0';
 	while(val) {
-		if(++cc >= 3) { *(--tp) = ','; cc = 0; }
+		if(comma) if(++cc >= 3) { *(--tp) = ','; cc = 0; }
 		*(--tp) = '0' + (val % 10);
 		val /= 10;
 	}
@@ -83,15 +83,16 @@ void printSVal(ULONGLONG val, DWORD pad) {
 	fprintf(stderr, "%s", tp);
 	free(vb);
 }
-void printSValWidth(ULONGLONG val, int width) {
-	char *tp,*vb = malloc((width+28) * sizeof(char));
+void printSValWidth(ULONGLONG val, int width, BOOL comma) {
+	DWORD sz = width>27?width:27;
+	char *tp,*vb = malloc((sz+1) * sizeof(char));
 	DWORD cc = -1;
 	if(!vb) return;
-	tp = vb + width + 27;
+	tp = vb + sz;
 	*tp = '\0';
 	if(!val) *(--tp) = '0';
 	while(val) {
-		if(++cc >= 3) { *(--tp) = ','; --width; cc = 0; }
+		if(comma) if(++cc >= 3) { *(--tp) = ','; --width; cc = 0; }
 		*(--tp) = '0' + (val % 10); --width;
 		val /= 10;
 	}
@@ -369,9 +370,9 @@ int main(void) {
 		}
 		if(t&2) {
 			/*fprintf(stderr, "%lld -> %lld: %d.%02d%%. Cpu ", ic.ReadTransferCount, ic.WriteTransferCount, ic.ReadTransferCount?(ic.WriteTransferCount*100)/ic.ReadTransferCount:0, (ic.ReadTransferCount?(ic.WriteTransferCount*10000)/ic.ReadTransferCount:0)%100);*/
-			printSVal(ic.ReadTransferCount, 0);
+			printSVal(ic.ReadTransferCount, 0, TRUE);
 			fprintf(stderr, " -> ");
-			printSVal(ic.WriteTransferCount, 0);
+			printSVal(ic.WriteTransferCount, 0, TRUE);
 			if(ic.ReadTransferCount < ic.WriteTransferCount) {
 				ic.ReadTransferCount ^= ic.WriteTransferCount;
 				ic.WriteTransferCount ^= ic.ReadTransferCount;
