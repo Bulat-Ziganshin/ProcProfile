@@ -1,4 +1,4 @@
-/*  ProcProfile 1.3 - A Command Line Process Profiling Tool For Windows
+/*  ProcProfile 1.4 - A Command Line Process Profiling Tool For Windows
     Written in 2013 by David Catt
     Modified by Bulat Ziganshin
     Placed into public domain */
@@ -110,7 +110,7 @@ void clearScreen() {
 	if(hStdOut == INVALID_HANDLE_VALUE) return;
 	/* Get the number of cells in the current buffer */
 	if(!GetConsoleScreenBufferInfo(hStdOut, &csbi)) return;
-	cellCount = csbi.dwSize.X *csbi.dwSize.Y;
+	cellCount = csbi.dwSize.X * csbi.dwSize.Y;
 	/* Fill the entire buffer with spaces */
 	if(!FillConsoleOutputCharacter(hStdOut, (TCHAR) ' ', cellCount, homeCoords, &count)) return;
 	/* Fill the entire buffer with the current colors and attributes */
@@ -120,7 +120,7 @@ void clearScreen() {
 }
 
 void printHelp(void) {
-	fprintf(stdout, "ProcProfile    V1.3\n\n");
+	fprintf(stdout, "ProcProfile    V1.4\n\n");
 	fprintf(stdout, "usage: ProcProfile [arguments] [commandline]\n\n");
 	fprintf(stdout, "arguments:\n");
 	fprintf(stdout, "   -b   - Output results in bytes\n");
@@ -137,7 +137,7 @@ void printHelp(void) {
 	fprintf(stdout, "   -a...- Set process affinity to the given hex string\n");
 	fprintf(stdout, "   -t...- Select output templates\n");
 	fprintf(stdout, "   -o   - Print available templates and exit\n");
-	fprintf(stdout, "   -l   - Print live stats (-p or -w only, -tb only)\n");
+	fprintf(stdout, "   -l   - Print live stats (-p or -w only)\n");
 	fprintf(stdout, "   --   - Stop parsing arguments\n");
 }
 void printStatus(DWORD t, DWORD ce, DWORD al, DWORD u, DWORD du, clock_t bt, BOOL live) {
