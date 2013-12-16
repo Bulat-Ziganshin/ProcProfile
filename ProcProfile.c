@@ -486,6 +486,7 @@ int main(void) {
 		}		
 		/* Print status */
 		if(ls&&(t!=2)) clearScreen();
+		if(ls&&(t==2)) lineBack();
 		printStatus(t, ce, al, u, du, ns, bt, FALSE);
 		/* Close process and thread handles */
 		CloseHandle(pi.hThread);
