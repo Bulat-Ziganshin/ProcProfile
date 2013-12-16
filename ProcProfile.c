@@ -233,6 +233,7 @@ void printStatus(DWORD t, DWORD ce, DWORD al, DWORD u, DWORD du, BOOL ns, clock_
 	}
 	if(t&2) {
 		/*fprintf(stderr, "%lld -> %lld: %d.%02d%%. Cpu ", ic.ReadTransferCount, ic.WriteTransferCount, ic.ReadTransferCount?(ic.WriteTransferCount*100)/ic.ReadTransferCount:0, (ic.ReadTransferCount?(ic.WriteTransferCount*10000)/ic.ReadTransferCount:0)%100);*/
+		if(ns)fprintf(stderr, " ");
 		printSVal(ic.ReadTransferCount, 0, TRUE);
 		fprintf(stderr, " -> ");
 		printSVal(ic.WriteTransferCount, 0, TRUE);
