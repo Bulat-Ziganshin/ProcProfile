@@ -8,6 +8,7 @@
 /* #define CCTERMINATE */
 #define POLLINTERVAL 10
 #define CHECKINTERVAL 10
+#define UPDATEFRAMES 5
 #include <windows.h>
 #include <psapi.h>
 #include <stdlib.h>
@@ -100,7 +101,7 @@ void printSValWidth(ULONGLONG val, int width, BOOL comma) {
 	fprintf(stderr, "%s", tp);
 	free(vb);
 }
-void clearScreen() {
+void clearScreen(void) {
 	HANDLE hStdOut;
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	DWORD count;
@@ -117,6 +118,16 @@ void clearScreen() {
 	if(!FillConsoleOutputAttribute(hStdOut, csbi.wAttributes, cellCount, homeCoords, &count)) return;
 	/* Move the cursor home */
 	SetConsoleCursorPosition(hStdOut, homeCoords);
+}
+void lineBack(void) {
+	HANDLE hc = GetStdHandle(STD_OUTPUT_HANDLE);
+	CONSOLE_SCREEN_BUFFER_INFO bi;
+	COORD sc = {0, 0};
+	if(!GetConsoleScreenBufferInfo(hc, &bi)) return;
+	sc.X = 0;
+	sc.Y = bi.dwCursorPosition.Y - 1;
+	if(sc.Y < 0) sc.Y = 0;
+	SetConsoleCursorPosition(hc, sc);
 }
 
 void printHelp(void) {
@@ -137,10 +148,11 @@ void printHelp(void) {
 	fprintf(stdout, "   -a...- Set process affinity to the given hex string\n");
 	fprintf(stdout, "   -t...- Select output templates\n");
 	fprintf(stdout, "   -o   - Print available templates and exit\n");
-	fprintf(stdout, "   -l   - Print live stats (-p or -w only)\n");
+	fprintf(stdout, "   -l   - Print live stats (-p or -x only)\n");
+	fprintf(stdout, "   -n   - Disable newlines before stats\n");
 	fprintf(stdout, "   --   - Stop parsing arguments\n");
 }
-void printStatus(DWORD t, DWORD ce, DWORD al, DWORD u, DWORD du, clock_t bt, BOOL live) {
+void printStatus(DWORD t, DWORD ce, DWORD al, DWORD u, DWORD du, BOOL ns, clock_t bt, BOOL live) {
 	/* Declare variables */
 	PROCESS_MEMORY_COUNTERS mc;
 	IO_COUNTERS ic;
@@ -150,6 +162,7 @@ void printStatus(DWORD t, DWORD ce, DWORD al, DWORD u, DWORD du, clock_t bt, BOO
 	FILETIME ct,et,kt,ut;
 	ULONGLONG ctv,etv,ktv,utv;
 	DWORD tec=0,pec=0;
+	if(live&&(t==2))ns=TRUE;
 	/* Setup structures */
 	mc.cb = sizeof(PROCESS_MEMORY_COUNTERS);
 	/* Retrieve end time */
@@ -192,7 +205,7 @@ void printStatus(DWORD t, DWORD ce, DWORD al, DWORD u, DWORD du, clock_t bt, BOO
 		mc.PeakPagefileUsage = mc.PagefileUsage;
 	}
 	/* Print process information */
-	fprintf(stderr, "\n");
+	if(!ns)fprintf(stderr, "\n");
 	if(t&1) {
 		if(ce&1)fprintf(stderr, "Process ID       : %d\n", pi.dwProcessId);
 		if(ce&2)fprintf(stderr, "Thread ID        : %d\n", pi.dwThreadId);
@@ -233,6 +246,11 @@ void printStatus(DWORD t, DWORD ce, DWORD al, DWORD u, DWORD du, clock_t bt, BOO
 		fprintf(stderr, " (%lld.%03lld sec), real ", (utv+ktv)/1000, (utv+ktv)%1000);
 		printSpeed((etv-ctv)?(ic.ReadTransferCount*1000)/(etv-ctv):0, du);
 		fprintf(stderr, " (%lld.%03lld sec) = %d%%\n", (etv-ctv)/1000, (etv-ctv)%1000, (etv-ctv)?((utv+ktv)*100)/(etv-ctv):0);
+		if(!live) {
+			fprintf(stderr, "Physical Memory: %lld %s\n", (ULONGLONG)mc.PeakWorkingSetSize>>shifts[u], units[u]);
+			fprintf(stderr, "Virtual Memory : %lld %s\n", (ULONGLONG)mc.PeakPagefileUsage>>shifts[u], units[u]);
+			if(pec) fprintf(stderr, "Exit code = %d\n", pec);
+		}
 	}
 	if(t&4) {
 		fprintf(stderr, "<profile>\n");
@@ -274,6 +292,7 @@ void printStatus(DWORD t, DWORD ce, DWORD al, DWORD u, DWORD du, clock_t bt, BOO
 		if(ce&57344)fprintf(stderr, "\t</io>\n");
 		fprintf(stderr, "</profile>\n");
 	}
+	if(ns)lineBack();
 }
 int main(void) {
 	/* Declare variables */
@@ -284,9 +303,9 @@ int main(void) {
 #endif
 	DWORD exc;
 	DWORD cf=0;
-	DWORD u=1,p=0,al=-1,ce=-1,t=1,du=-1;
+	DWORD u=1,p=0,al=-1,ce=-1,t=1,du=-1,ut=0;
 	DWORD_PTR pa=-1;
-	BOOL inq=FALSE,ls=FALSE;
+	BOOL inq=FALSE,ls=FALSE,ns=FALSE;
 	/* Get command line and strip to only arguments */
 	cm = cl = GetCommandLine();
 	nextArg(&cl);
@@ -418,6 +437,8 @@ int main(void) {
 			return 1;
 		} else if(matchArg(cl, "-l")) {
 			ls = TRUE;
+		} else if(matchArg(cl, "-n")) {
+			ns = TRUE;
 		} else if(matchArg(cl, "--")) {
 			nextArg(&cl);
 			break;
@@ -451,21 +472,21 @@ int main(void) {
 				break;
 			case 1:
 				while(WaitForSingleObject(pi.hProcess, CHECKINTERVAL) == WAIT_TIMEOUT) {
-					if(ls) { clearScreen(); printStatus(t, ce, al, u, du, bt, FALSE); }
+					if(ls) { if(++ut >= UPDATEFRAMES) { ut = 0; if(t!=2)clearScreen(); printStatus(t, ce, al, u, du, ns, bt, TRUE); } }
 					Sleep(POLLINTERVAL);
 				}
 				break;
 			case 2:
 				while(GetExitCodeProcess(pi.hProcess, &exc)) {
 					if(exc != STILL_ACTIVE) break;
-					if(ls) { clearScreen(); printStatus(t, ce, al, u, du, bt, FALSE); }
+					if(ls) { if(++ut >= UPDATEFRAMES) { if(t!=2)clearScreen(); printStatus(t, ce, al, u, du, ns, bt, TRUE); } }
 					Sleep(POLLINTERVAL);
 				}
 				break;
 		}		
 		/* Print status */
-		if(ls) clearScreen();
-		printStatus(t, ce, al, u, du, bt, FALSE);
+		if(ls&&(t!=2)) clearScreen();
+		printStatus(t, ce, al, u, du, ns, bt, FALSE);
 		/* Close process and thread handles */
 		CloseHandle(pi.hThread);
 		CloseHandle(pi.hProcess);
