@@ -319,7 +319,7 @@ int main(void) {
 		if(pt == 0) {
 			if(!strstr(cm, " -h") && !strstr(cm, "\t-h")) {
 				if(ini = fopen("ProcProfile.ini", "r")) {
-					ini[fread(bf, sizeof(TCHAR), 32767, ini)] = (TCHAR) '\0';
+					bf[fread(bf, sizeof(TCHAR), 32767, ini)] = (TCHAR) '\0';
 					fclose(ini);
 					cl = bf;
 				} else {
