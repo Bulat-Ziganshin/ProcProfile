@@ -1,4 +1,4 @@
-/*  ProcProfile 1.4 - A Command Line Process Profiling Tool For Windows
+/*  ProcProfile 1.5 - A Command Line Process Profiling Tool For Windows
     Written in 2013 by David Catt
     Modified by Bulat Ziganshin
     Placed into public domain */
@@ -131,7 +131,7 @@ void lineBack(void) {
 }
 
 void printHelp(void) {
-	fprintf(stdout, "ProcProfile    V1.4\n\n");
+	fprintf(stdout, "ProcProfile    V1.5\n\n");
 	fprintf(stdout, "usage: ProcProfile [arguments] [commandline]\n\n");
 	fprintf(stdout, "arguments:\n");
 	fprintf(stdout, "   -b   - Output results in bytes\n");
@@ -150,9 +150,10 @@ void printHelp(void) {
 	fprintf(stdout, "   -o   - Print available templates and exit\n");
 	fprintf(stdout, "   -l   - Print live stats (-p or -x only)\n");
 	fprintf(stdout, "   -n   - Disable newlines before stats\n");
+	fprintf(stdout, "   -g   - Disable newlines between stat groups\n");
 	fprintf(stdout, "   --   - Stop parsing arguments\n");
 }
-void printStatus(DWORD t, DWORD ce, DWORD al, DWORD u, DWORD du, BOOL ns, clock_t bt, BOOL live) {
+void printStatus(DWORD t, DWORD ce, DWORD al, DWORD u, DWORD du, BOOL ns, BOOL ng, clock_t bt, BOOL live) {
 	/* Declare variables */
 	PROCESS_MEMORY_COUNTERS mc;
 	IO_COUNTERS ic;
@@ -214,18 +215,18 @@ void printStatus(DWORD t, DWORD ce, DWORD al, DWORD u, DWORD du, BOOL ns, clock_
 		/* fprintf(stderr, "\n");
 		fprintf(stderr, "Start Date: \n");
 		fprintf(stderr, "End Date  : \n"); */
-		if(ce&15)fprintf(stderr, "\n");
+		if(!ng&&ce&15)fprintf(stderr, "\n");
 		if(ce&16)fprintf(stderr, "User Time        : %*lld.%03llds\n", (8+wdiffs[u])&al, utv/1000, utv%1000);
 		if(ce&32)fprintf(stderr, "Kernel Time      : %*lld.%03llds\n", (8+wdiffs[u])&al, ktv/1000, ktv%1000);
 		if(ce&64)fprintf(stderr, "Process Time     : %*lld.%03llds\n", (8+wdiffs[u])&al, (utv+ktv)/1000, (utv+ktv)%1000);
 		if(ce&128)fprintf(stderr, "Clock Time       : %*lld.%03llds\n", (8+wdiffs[u])&al, (etv-ctv)/1000, (etv-ctv)%1000);
-		if(ce&240)fprintf(stderr, "\n");
+		if(!ng&&ce&240)fprintf(stderr, "\n");
 		if(ce&256)fprintf(stderr, "Working Set      : %*lld %s\n", (12+wdiffs[u])&al, (ULONGLONG)mc.PeakWorkingSetSize>>shifts[u], units[u]);
 		if(ce&512)fprintf(stderr, "Paged Pool       : %*lld %s\n", (12+wdiffs[u])&al, (ULONGLONG)mc.QuotaPeakPagedPoolUsage>>shifts[u], units[u]);
 		if(ce&1024)fprintf(stderr, "Nonpaged Pool    : %*lld %s\n", (12+wdiffs[u])&al, (ULONGLONG)mc.QuotaPeakNonPagedPoolUsage>>shifts[u], units[u]);
 		if(ce&2048)fprintf(stderr, "Pagefile         : %*lld %s\n", (12+wdiffs[u])&al, (ULONGLONG)mc.PeakPagefileUsage>>shifts[u], units[u]);
 		if(ce&4096)fprintf(stderr, "Page Fault Count : %d\n", mc.PageFaultCount);
-		if(ce&7936)fprintf(stderr, "\n");
+		if(!ng&&ce&7936)fprintf(stderr, "\n");
 		if(ce&8192)fprintf(stderr, "IO Read          : %*lld %s (in %*lld reads%s)\n", (12+wdiffs[u])&al, ic.ReadTransferCount>>shifts[u], units[u], 15&al, ic.ReadOperationCount, al?" ":"");
 		if(ce&16384)fprintf(stderr, "IO Write         : %*lld %s (in %*lld writes)\n", (12+wdiffs[u])&al, ic.WriteTransferCount>>shifts[u], units[u], 15&al, ic.WriteOperationCount);
 		if(ce&32768)fprintf(stderr, "IO Other         : %*lld %s (in %*lld others)\n", (12+wdiffs[u])&al, ic.OtherTransferCount>>shifts[u], units[u], 15&al, ic.OtherOperationCount);
@@ -246,12 +247,12 @@ void printStatus(DWORD t, DWORD ce, DWORD al, DWORD u, DWORD du, BOOL ns, clock_
 		printSpeed((utv+ktv)?(ic.ReadTransferCount*1000)/(utv+ktv):0, du);
 		fprintf(stderr, " (%lld.%03lld sec), real ", (utv+ktv)/1000, (utv+ktv)%1000);
 		printSpeed((etv-ctv)?(ic.ReadTransferCount*1000)/(etv-ctv):0, du);
-		fprintf(stderr, " (%lld.%03lld sec) = %d%%\n", (etv-ctv)/1000, (etv-ctv)%1000, (etv-ctv)?((utv+ktv)*100)/(etv-ctv):0);
+		fprintf(stderr, " (%lld.%03lld sec) = %d%%", (etv-ctv)/1000, (etv-ctv)%1000, (etv-ctv)?((utv+ktv)*100)/(etv-ctv):0);
 		if(!live) {
-			fprintf(stderr, "Physical Memory: %lld %s\n", (ULONGLONG)mc.PeakWorkingSetSize>>shifts[u], units[u]);
-			fprintf(stderr, "Virtual Memory : %lld %s\n", (ULONGLONG)mc.PeakPagefileUsage>>shifts[u], units[u]);
-			if(pec) fprintf(stderr, "Exit code = %d\n", pec);
+			fprintf(stderr, ". ram %lld %s, vmem %lld %s", (ULONGLONG)mc.PeakWorkingSetSize>>shifts[u], units[u], (ULONGLONG)mc.PeakPagefileUsage>>shifts[u], units[u]);
+			if(pec) fprintf(stderr, ". Exit code = %d", pec);
 		}
+		fprintf(stderr, "\n");
 	}
 	if(t&4) {
 		fprintf(stderr, "<profile>\n");
@@ -306,7 +307,7 @@ int main(void) {
 	DWORD cf=0;
 	DWORD u=1,p=0,al=-1,ce=-1,t=1,du=-1,ut=0;
 	DWORD_PTR pa=-1;
-	BOOL inq=FALSE,ls=FALSE,ns=FALSE;
+	BOOL inq=FALSE,ls=FALSE,ns=FALSE,ng=FALSE;
 	/* Get command line and strip to only arguments */
 	cm = cl = GetCommandLine();
 	nextArg(&cl);
@@ -440,6 +441,8 @@ int main(void) {
 			ls = TRUE;
 		} else if(matchArg(cl, "-n")) {
 			ns = TRUE;
+		} else if(matchArg(cl, "-g")) {
+			ng = TRUE;
 		} else if(matchArg(cl, "--")) {
 			nextArg(&cl);
 			break;
@@ -473,14 +476,14 @@ int main(void) {
 				break;
 			case 1:
 				while(WaitForSingleObject(pi.hProcess, CHECKINTERVAL) == WAIT_TIMEOUT) {
-					if(ls) { if(++ut >= UPDATEFRAMES) { ut = 0; if(t!=2)clearScreen(); printStatus(t, ce, al, u, du, ns, bt, TRUE); } }
+					if(ls) { if(++ut >= UPDATEFRAMES) { ut = 0; if(t!=2)clearScreen(); printStatus(t, ce, al, u, du, ns, ng, bt, TRUE); } }
 					Sleep(POLLINTERVAL);
 				}
 				break;
 			case 2:
 				while(GetExitCodeProcess(pi.hProcess, &exc)) {
 					if(exc != STILL_ACTIVE) break;
-					if(ls) { if(++ut >= UPDATEFRAMES) { if(t!=2)clearScreen(); printStatus(t, ce, al, u, du, ns, bt, TRUE); } }
+					if(ls) { if(++ut >= UPDATEFRAMES) { if(t!=2)clearScreen(); printStatus(t, ce, al, u, du, ns, ng, bt, TRUE); } }
 					Sleep(POLLINTERVAL);
 				}
 				break;
@@ -488,7 +491,7 @@ int main(void) {
 		/* Print status */
 		if(ls&&(t!=2)) clearScreen();
 		if(ls&&(t==2)) lineBack();
-		printStatus(t, ce, al, u, du, ns, bt, FALSE);
+		printStatus(t, ce, al, u, du, ns, ng, bt, FALSE);
 		/* Close process and thread handles */
 		CloseHandle(pi.hThread);
 		CloseHandle(pi.hProcess);
