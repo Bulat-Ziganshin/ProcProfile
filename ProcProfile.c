@@ -465,7 +465,7 @@ int main(void) {
 			} else if(matchArg(cl, "-g")) {
 				ng = TRUE;
 			} else if(matchArg(cl, "-h")) {
-				/* Do Nothing */
+				if(pt == 0) break;
 			} else if(matchArg(cl, "--")) {
 				nextArg(&cl);
 				break;
