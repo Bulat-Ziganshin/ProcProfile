@@ -151,6 +151,7 @@ void printHelp(void) {
 	fprintf(stdout, "   -l   - Print live stats (-p or -x only)\n");
 	fprintf(stdout, "   -n   - Disable newlines before stats\n");
 	fprintf(stdout, "   -g   - Disable newlines between stat groups\n");
+	fprintf(stdout, "   -h   - Ignore options in configuration file\n");
 	fprintf(stdout, "   --   - Stop parsing arguments\n");
 }
 void printStatus(DWORD t, DWORD ce, DWORD al, DWORD u, DWORD du, BOOL ns, BOOL ng, clock_t bt, BOOL live) {
@@ -298,163 +299,187 @@ void printStatus(DWORD t, DWORD ce, DWORD al, DWORD u, DWORD du, BOOL ns, BOOL n
 }
 int main(void) {
 	/* Declare variables */
-	LPTSTR cl,cm,tc;
+	LPTSTR cl=NULL,cm,tc;
 	STARTUPINFO si;
+	FILE* ini;
+	TCHAR bf[65536];
 #ifdef STDPTIME
 	clock_t bt;
 #endif
+	DWORD pt=0;
 	DWORD exc;
 	DWORD cf=0;
 	DWORD u=1,p=0,al=-1,ce=-1,t=1,du=-1,ut=0;
 	DWORD_PTR pa=-1;
 	BOOL inq=FALSE,ls=FALSE,ns=FALSE,ng=FALSE;
 	/* Get command line and strip to only arguments */
-	cm = cl = GetCommandLine();
-	nextArg(&cl);
+	cm = GetCommandLine();
 	/* Parse program arguments */
-	while(*cl != (TCHAR) '\0') {
-		if(matchArg(cl, "--help")) {
-			printHelp();
-			return 1;
-		} else if(matchArg(cl, "/?")) {
-			printHelp();
-			return 1;
-		} else if(matchArg(cl, "-b")) {
-			u = 0;
-			du = 0;
-		} else if(matchArg(cl, "-k")) {
-			u = 1;
-			du = 1;
-		} else if(matchArg(cl, "-m")) {
-			u = 2;
-			du = 2;
-		} else if(matchArg(cl, "-w")) {
-			p = 0;
-		} else if(matchArg(cl, "-p")) {
-			p = 1;
-		} else if(matchArg(cl, "-x")) {
-			p = 2;
-		} else if(matchArg(cl, "-u")) {
-			al = 0;
-		} else if(matchArgPart(cl, "-r")) {
-			ce = 0;
-			tc = cl + (sizeof(TCHAR)<<1);
-			while((inq || !(*tc == (TCHAR)' ')) && !(*tc == (TCHAR)'\0')) {
-				switch(*tc) {
-					case (TCHAR)'"': inq = !inq; break;
-					case (TCHAR)'0': ce |= 1; break;
-					case (TCHAR)'1': ce |= 2; break;
-					case (TCHAR)'2': ce |= 4; break;
-					case (TCHAR)'3': ce |= 8; break;
-					case (TCHAR)'4': ce |= 16; break;
-					case (TCHAR)'5': ce |= 32; break;
-					case (TCHAR)'6': ce |= 64; break;
-					case (TCHAR)'7': ce |= 128; break;
-					case (TCHAR)'8': ce |= 256; break;
-					case (TCHAR)'9': ce |= 512; break;
-					case (TCHAR)'a': ce |= 1024; break;
-					case (TCHAR)'b': ce |= 2048; break;
-					case (TCHAR)'c': ce |= 4096; break;
-					case (TCHAR)'d': ce |= 8192; break;
-					case (TCHAR)'e': ce |= 16384; break;
-					case (TCHAR)'f': ce |= 32768; break;
-					case (TCHAR)'i': ce |= 15; break;
-					case (TCHAR)'t': ce |= 240; break;
-					case (TCHAR)'m': ce |= 7936; break;
-					case (TCHAR)'o': ce |= 57344; break;
+	while(pt < 2) {
+		if(pt == 0) {
+			if(!strstr(cm, " -h") && !strstr(cm, "\t-h")) {
+				if(ini = fopen("ProcProfile.ini", "r")) {
+					fread(bf, sizeof(TCHAR), 32767, ini);
+					fclose(ini);
+					cl = bf;
+				} else {
+					++pt;
 				}
-				tc += sizeof(TCHAR);
+			} else {
+				++pt;
 			}
-		} else if(matchArg(cl, "-s")) {
-			fprintf(stdout, "Statistic Output Types:\n");
-			fprintf(stdout, "  0 - Process ID\n");
-			fprintf(stdout, "  1 - Thread ID\n");
-			fprintf(stdout, "  2 - Process Exit Code\n");
-			fprintf(stdout, "  3 - Thread Exit Code\n");
-			fprintf(stdout, "  4 - User Time\n");
-			fprintf(stdout, "  5 - Kernel Time\n");
-			fprintf(stdout, "  6 - Process Time\n");
-			fprintf(stdout, "  7 - Clock Time\n");
-			fprintf(stdout, "  8 - Working Set\n");
-			fprintf(stdout, "  9 - Paged Pool\n");
-			fprintf(stdout, "  a - Nonpaged Pool\n");
-			fprintf(stdout, "  b - Pagefile\n");
-			fprintf(stdout, "  c - Page Fault Count\n");
-			fprintf(stdout, "  d - IO Read\n");
-			fprintf(stdout, "  e - IO Write\n");
-			fprintf(stdout, "  f - IO Other\n\n");
-			fprintf(stdout, "Statistic Groups:\n");
-			fprintf(stdout, "  i - Process/Thread Info\n");
-			fprintf(stdout, "  t - Process Times\n");
-			fprintf(stdout, "  m - Memory Info\n");
-			fprintf(stdout, "  o - IO Info\n");
-			return 1;
-		} else if(matchArg(cl, "-pi")) {
-			cf = IDLE_PRIORITY_CLASS;
-		} else if(matchArg(cl, "-pb")) {
-			cf = BELOW_NORMAL_PRIORITY_CLASS;
-		} else if(matchArg(cl, "-pn")) {
-			cf = NORMAL_PRIORITY_CLASS;
-		} else if(matchArg(cl, "-pa")) {
-			cf = ABOVE_NORMAL_PRIORITY_CLASS;
-		} else if(matchArg(cl, "-ph")) {
-			cf = HIGH_PRIORITY_CLASS;
-		} else if(matchArg(cl, "-pr")) {
-			cf = REALTIME_PRIORITY_CLASS;
-		} else if(matchArg(cl, "-i")) {
-			fprintf(stdout, "Priority Types:\n");
-			fprintf(stdout, "  i  - Idle priority\n");
-			fprintf(stdout, "  b  - Below normal priority\n");
-			fprintf(stdout, "  n  - Normal priority\n");
-			fprintf(stdout, "  a  - Above normal priority\n");
-			fprintf(stdout, "  h  - High priority\n");
-			fprintf(stdout, "  r  - Realtime priority\n");
-			return 1;
-		} else if(matchArgPart(cl, "-a")) {
-			pa = 0;
-			tc = cl + (sizeof(TCHAR)<<1);
-			while((inq || !(*tc == (TCHAR)' ')) && !(*tc == (TCHAR)'\0')) {
-				if((*tc >= '0') && (*tc <= '9')) { pa <<= 4; pa += *tc - '0'; }
-				if((*tc >= 'a') && (*tc <= 'f')) { pa <<= 4; pa += *tc - 'a' + 10; }
-				if((*tc >= 'A') && (*tc <= 'F')) { pa <<= 4; pa += *tc - 'A' + 10; }
-				tc += sizeof(TCHAR);
-			}
-		} else if(matchArgPart(cl, "-t")) {
-			t = 0;
-			tc = cl + (sizeof(TCHAR)<<1);
-			while((inq || !(*tc == (TCHAR)' ')) && !(*tc == (TCHAR)'\0')) {
-				switch(*tc) {
-					case (TCHAR)'"': inq = !inq; break;
-					case (TCHAR)'n': t |= 1; break;
-					case (TCHAR)'b': t |= 2; break;
-					case (TCHAR)'x': t |= 4; break;
-				}
-				tc += sizeof(TCHAR);
-			}
-		} else if(matchArg(cl, "-o")) {
-			fprintf(stdout, "Output Template Types:\n");
-			fprintf(stdout, "  n - Use normal output template (default)\n");
-			fprintf(stdout, "  b - Use compressor benchmarking output template\n");
-			fprintf(stdout, "  x - Use xml output template\n");
-			return 1;
-		} else if(matchArg(cl, "-l")) {
-			ls = TRUE;
-		} else if(matchArg(cl, "-n")) {
-			ns = TRUE;
-		} else if(matchArg(cl, "-g")) {
-			ng = TRUE;
-		} else if(matchArg(cl, "--")) {
-			nextArg(&cl);
-			break;
-		} else {
-			break;
 		}
-		nextArg(&cl);
-	}
-	/* Print help on empty command line */
-	if(*cl == (TCHAR) '\0') {
-		printHelp();
-		return 1;
+		if(pt == 1) {
+			cl = cm;
+			nextArg(&cl);
+			/* Print help on empty command line */
+			if(*cl == (TCHAR) '\0') {
+				printHelp();
+				return 1;
+			}
+		}
+		while(*cl != (TCHAR) '\0') {
+			if(matchArg(cl, "--help")) {
+				printHelp();
+				return 1;
+			} else if(matchArg(cl, "/?")) {
+				printHelp();
+				return 1;
+			} else if(matchArg(cl, "-b")) {
+				u = 0;
+				du = 0;
+			} else if(matchArg(cl, "-k")) {
+				u = 1;
+				du = 1;
+			} else if(matchArg(cl, "-m")) {
+				u = 2;
+				du = 2;
+			} else if(matchArg(cl, "-w")) {
+				p = 0;
+			} else if(matchArg(cl, "-p")) {
+				p = 1;
+			} else if(matchArg(cl, "-x")) {
+				p = 2;
+			} else if(matchArg(cl, "-u")) {
+				al = 0;
+			} else if(matchArgPart(cl, "-r")) {
+				ce = 0;
+				tc = cl + (sizeof(TCHAR)<<1);
+				while((inq || !(*tc == (TCHAR)' ')) && !(*tc == (TCHAR)'\0')) {
+					switch(*tc) {
+						case (TCHAR)'"': inq = !inq; break;
+						case (TCHAR)'0': ce |= 1; break;
+						case (TCHAR)'1': ce |= 2; break;
+						case (TCHAR)'2': ce |= 4; break;
+						case (TCHAR)'3': ce |= 8; break;
+						case (TCHAR)'4': ce |= 16; break;
+						case (TCHAR)'5': ce |= 32; break;
+						case (TCHAR)'6': ce |= 64; break;
+						case (TCHAR)'7': ce |= 128; break;
+						case (TCHAR)'8': ce |= 256; break;
+						case (TCHAR)'9': ce |= 512; break;
+						case (TCHAR)'a': ce |= 1024; break;
+						case (TCHAR)'b': ce |= 2048; break;
+						case (TCHAR)'c': ce |= 4096; break;
+						case (TCHAR)'d': ce |= 8192; break;
+						case (TCHAR)'e': ce |= 16384; break;
+						case (TCHAR)'f': ce |= 32768; break;
+						case (TCHAR)'i': ce |= 15; break;
+						case (TCHAR)'t': ce |= 240; break;
+						case (TCHAR)'m': ce |= 7936; break;
+						case (TCHAR)'o': ce |= 57344; break;
+					}
+					tc += sizeof(TCHAR);
+				}
+			} else if(matchArg(cl, "-s")) {
+				fprintf(stdout, "Statistic Output Types:\n");
+				fprintf(stdout, "  0 - Process ID\n");
+				fprintf(stdout, "  1 - Thread ID\n");
+				fprintf(stdout, "  2 - Process Exit Code\n");
+				fprintf(stdout, "  3 - Thread Exit Code\n");
+				fprintf(stdout, "  4 - User Time\n");
+				fprintf(stdout, "  5 - Kernel Time\n");
+				fprintf(stdout, "  6 - Process Time\n");
+				fprintf(stdout, "  7 - Clock Time\n");
+				fprintf(stdout, "  8 - Working Set\n");
+				fprintf(stdout, "  9 - Paged Pool\n");
+				fprintf(stdout, "  a - Nonpaged Pool\n");
+				fprintf(stdout, "  b - Pagefile\n");
+				fprintf(stdout, "  c - Page Fault Count\n");
+				fprintf(stdout, "  d - IO Read\n");
+				fprintf(stdout, "  e - IO Write\n");
+				fprintf(stdout, "  f - IO Other\n\n");
+				fprintf(stdout, "Statistic Groups:\n");
+				fprintf(stdout, "  i - Process/Thread Info\n");
+				fprintf(stdout, "  t - Process Times\n");
+				fprintf(stdout, "  m - Memory Info\n");
+				fprintf(stdout, "  o - IO Info\n");
+				return 1;
+			} else if(matchArg(cl, "-pi")) {
+				cf = IDLE_PRIORITY_CLASS;
+			} else if(matchArg(cl, "-pb")) {
+				cf = BELOW_NORMAL_PRIORITY_CLASS;
+			} else if(matchArg(cl, "-pn")) {
+				cf = NORMAL_PRIORITY_CLASS;
+			} else if(matchArg(cl, "-pa")) {
+				cf = ABOVE_NORMAL_PRIORITY_CLASS;
+			} else if(matchArg(cl, "-ph")) {
+				cf = HIGH_PRIORITY_CLASS;
+			} else if(matchArg(cl, "-pr")) {
+				cf = REALTIME_PRIORITY_CLASS;
+			} else if(matchArg(cl, "-i")) {
+				fprintf(stdout, "Priority Types:\n");
+				fprintf(stdout, "  i  - Idle priority\n");
+				fprintf(stdout, "  b  - Below normal priority\n");
+				fprintf(stdout, "  n  - Normal priority\n");
+				fprintf(stdout, "  a  - Above normal priority\n");
+				fprintf(stdout, "  h  - High priority\n");
+				fprintf(stdout, "  r  - Realtime priority\n");
+				return 1;
+			} else if(matchArgPart(cl, "-a")) {
+				pa = 0;
+				tc = cl + (sizeof(TCHAR)<<1);
+				while((inq || !(*tc == (TCHAR)' ')) && !(*tc == (TCHAR)'\0')) {
+					if((*tc >= '0') && (*tc <= '9')) { pa <<= 4; pa += *tc - '0'; }
+					if((*tc >= 'a') && (*tc <= 'f')) { pa <<= 4; pa += *tc - 'a' + 10; }
+					if((*tc >= 'A') && (*tc <= 'F')) { pa <<= 4; pa += *tc - 'A' + 10; }
+					tc += sizeof(TCHAR);
+				}
+			} else if(matchArgPart(cl, "-t")) {
+				t = 0;
+				tc = cl + (sizeof(TCHAR)<<1);
+				while((inq || !(*tc == (TCHAR)' ')) && !(*tc == (TCHAR)'\0')) {
+					switch(*tc) {
+						case (TCHAR)'"': inq = !inq; break;
+						case (TCHAR)'n': t |= 1; break;
+						case (TCHAR)'b': t |= 2; break;
+						case (TCHAR)'x': t |= 4; break;
+					}
+					tc += sizeof(TCHAR);
+				}
+			} else if(matchArg(cl, "-o")) {
+				fprintf(stdout, "Output Template Types:\n");
+				fprintf(stdout, "  n - Use normal output template (default)\n");
+				fprintf(stdout, "  b - Use compressor benchmarking output template\n");
+				fprintf(stdout, "  x - Use xml output template\n");
+				return 1;
+			} else if(matchArg(cl, "-l")) {
+				ls = TRUE;
+			} else if(matchArg(cl, "-n")) {
+				ns = TRUE;
+			} else if(matchArg(cl, "-g")) {
+				ng = TRUE;
+			} else if(matchArg(cl, "-h")) {
+				/* Do Nothing */
+			} else if(matchArg(cl, "--")) {
+				nextArg(&cl);
+				break;
+			} else {
+				if(pt != 0) break;
+			}
+			nextArg(&cl);
+		}
+		++pt;
 	}
 	/* Setup structures */
 	GetStartupInfo(&si);
