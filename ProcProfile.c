@@ -319,7 +319,7 @@ int main(void) {
 		if(pt == 0) {
 			if(!strstr(cm, " -h") && !strstr(cm, "\t-h")) {
 				if(ini = fopen("ProcProfile.ini", "r")) {
-					fread(bf, sizeof(TCHAR), 32767, ini);
+					ini[fread(bf, sizeof(TCHAR), 32767, ini)] = (TCHAR) '\0';
 					fclose(ini);
 					cl = bf;
 				} else {
@@ -332,11 +332,6 @@ int main(void) {
 		if(pt == 1) {
 			cl = cm;
 			nextArg(&cl);
-			/* Print help on empty command line */
-			if(*cl == (TCHAR) '\0') {
-				printHelp();
-				return 1;
-			}
 		}
 		while(*cl != (TCHAR) '\0') {
 			if(matchArg(cl, "--help")) {
@@ -480,6 +475,11 @@ int main(void) {
 			nextArg(&cl);
 		}
 		++pt;
+	}
+	/* Print help on empty command line */
+	if(*cl == (TCHAR) '\0') {
+		printHelp();
+		return 1;
 	}
 	/* Setup structures */
 	GetStartupInfo(&si);
